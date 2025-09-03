@@ -30,11 +30,16 @@ with left:
     - The more you close, the better your odds  
     - Anyone with at least 1 entry is eligible  
 
+    ### 🎡 Number of Spins
+    - We will spin the wheel **4 times** 🎯  
+    - Each spin = 1 of the prizes below  
+    - Once you win, your entries are removed  
+
     ### 🏆 Prizes
-    - 🥇 **$600**  
-    - 🥈 **$400**  
-    - 🥉 **$300**  
-    - 💵 **$200**  
+    1. 🥇 **$600**  
+    2. 🥈 **$400**  
+    3. 🥉 **$300**  
+    4. 💵 **$200**  
 
     ### 🎥 Live Spin & Payout
     - Live spin held **October 1st**  
@@ -112,8 +117,11 @@ with right:
     for i, row in data.iterrows():
         rank = i + 1
         name = row["Agent"]
-        deals = row["Deals"]
+        deals = int(row["Deals"])  # ensure integer
         slack_url = row["Slack URL"] if "Slack URL" in row and pd.notna(row["Slack URL"]) else ""
+
+        # handle singular/plural
+        deal_label = "Deal" if deals == 1 else "Deals"
 
         if rank == 1:
             medal = "🥇"
@@ -129,8 +137,11 @@ with right:
             if slack_url:
                 st.image(slack_url, width=60)
         with cols[1]:
-            st.markdown(f"### {medal} {name} — **{deals} deals**")
-            st.progress(deals / data['Deals'].max())
+            st.markdown(f"### {medal} {name} — **{deals} {deal_label}**")
+            if deals > 0:
+                st.progress(deals / data['Deals'].max())
+            else:
+                st.progress(0)
 
         # 👇 spacing between rows
         st.markdown("<div style='margin-bottom:25px;'></div>", unsafe_allow_html=True)
