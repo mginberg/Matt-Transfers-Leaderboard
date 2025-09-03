@@ -1,105 +1,136 @@
 import streamlit as st
 import pandas as pd
 
-# --- Leaderboard setup (same as before) ---
+# --- Load Google Sheet ---
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1ydOa1IBcWFTqxX4Ocm2jqtI4DkgVFkueTPy7n8VIFzY/export?format=csv"
 data = pd.read_csv(SHEET_URL)
 data = data.sort_values("Deals", ascending=False).reset_index(drop=True)
 
-st.set_page_config(page_title="Spin the Wheel Leaderboard", page_icon="🏆", layout="centered")
-st.markdown("<h1 style='text-align:center;'>🏆 Monthly Deal Leaderboard</h1>", unsafe_allow_html=True)
+st.set_page_config(page_title="Spin the Wheel Leaderboard", page_icon="🏆", layout="wide")
 
-for i, row in data.iterrows():
-    rank = i + 1
-    name = row["Agent"]
-    deals = row["Deals"]
-    slack_url = row["Slack URL"] if "Slack URL" in row and pd.notna(row["Slack URL"]) else ""
-    if rank == 1:
-        medal = "🥇"
-    elif rank == 2:
-        medal = "🥈"
-    elif rank == 3:
-        medal = "🥉"
-    else:
-        medal = f"{rank}."
-    cols = st.columns([1,5])
-    with cols[0]:
-        if slack_url:
-            st.image(slack_url, width=60)
-    with cols[1]:
-        st.markdown(f"### {medal} {name} — **{deals} deals**")
-        st.progress(deals / data['Deals'].max())
-
-# --- Contest header ---
+# ---------------- TOP BANNER ----------------
 st.markdown("""
-# 🚨 SEPTEMBER SPIN-THE-WHEEL CONTEST 🚨
-🎉 **MATT TRANSFERS EDITION** 🎉  
-
-We're raffling off **$1,500 CASH** at the end of the month!
-
-🥇 $600  
-🥈 $400  
-🥉 $300  
-💵 $200  
-
-Every "Intake Complete" = 1 raffle entry.  
-The more you write, the better your odds.  
-""")
-
-# --- Prize Wheel (auto-spinning) ---
-st.markdown("## 🎡 Prize Wheel")
-wheel_html = """
-<div style="display:flex; justify-content:center; align-items:center;">
-<canvas id="wheelcanvas" width="400" height="400"></canvas>
+<div style='text-align:center; padding:20px; background-color:#f8f9fa; border-radius:12px;'>
+    <h1 style='color:#d32f2f;'>🚨 SEPTEMBER SPIN-THE-WHEEL CONTEST 🚨</h1>
+    <h2 style='color:#333;'>🎉 MATT TRANSFERS EDITION 🎉</h2>
 </div>
-<script>
-var options = ["$600", "$400", "$300", "$200"];
-var startAngle = 0;
-var arc = Math.PI / (options.length/2);
-var ctx;
-var spinAngle = 0.1;
+""", unsafe_allow_html=True)
 
-function drawRouletteWheel() {
-  var canvas = document.getElementById("wheelcanvas");
-  if (canvas.getContext) {
-    var outsideRadius = 180;
-    var textRadius = 140;
-    var insideRadius = 50;
-    ctx = canvas.getContext("2d");
-    ctx.clearRect(0,0,400,400);
+st.markdown("<br>", unsafe_allow_html=True)
 
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 2;
-    ctx.font = "bold 18px Helvetica, Arial";
+# ---------------- TWO COLUMNS ----------------
+left, right = st.columns([1,1])
 
-    for(var i = 0; i < options.length; i++) {
-      var angle = startAngle + i * arc;
-      ctx.fillStyle = ["#e74c3c","#f1c40f","#2ecc71","#3498db"][i];
-      ctx.beginPath();
-      ctx.arc(200, 200, outsideRadius, angle, angle + arc, false);
-      ctx.arc(200, 200, insideRadius, angle + arc, angle, true);
-      ctx.stroke();
-      ctx.fill();
+# LEFT SIDE = Rules + Wheel
+with left:
+    st.markdown("""
+    ### 🔑 How It Works
+    - Every **"Intake Complete" = 1 raffle entry**  
+    - Your total MATT TRANSFERS = your total entries  
+    - The more you close, the better your odds  
+    - Anyone with at least 1 entry is eligible  
 
-      ctx.save();
-      ctx.fillStyle = "white";
-      ctx.translate(200 + Math.cos(angle + arc / 2) * textRadius,
-                    200 + Math.sin(angle + arc / 2) * textRadius);
-      ctx.rotate(angle + arc / 2 + Math.PI/2);
-      ctx.fillText(options[i], -ctx.measureText(options[i]).width/2, 0);
-      ctx.restore();
+    ### 🏆 Prizes
+    - 🥇 **$600**  
+    - 🥈 **$400**  
+    - 🥉 **$300**  
+    - 💵 **$200**  
+
+    ### 🎥 Live Spin & Payout
+    - Live spin held **October 1st**  
+    - Winners paid via **Zelle same day**  
+
+    ### ⚠️ The Catch
+    - You can **only win once**  
+    - After winning, your entries are removed  
+    """)
+
+    st.markdown("## 🎡 Prize Wheel")
+    wheel_html = """
+    <div style="display:flex; justify-content:center; align-items:center;">
+    <canvas id="wheelcanvas" width="350" height="350"></canvas>
+    </div>
+    <script>
+    var options = ["$600", "$400", "$300", "$200"];
+    var startAngle = 0;
+    var arc = Math.PI / (options.length/2);
+    var ctx;
+    var spinAngle = 0.02;   // slower base spin
+    var pulse = 0.005;      // wobble effect
+
+    function drawRouletteWheel() {
+      var canvas = document.getElementById("wheelcanvas");
+      if (canvas.getContext) {
+        var outsideRadius = 150;
+        var textRadius = 115;
+        var insideRadius = 40;
+        ctx = canvas.getContext("2d");
+        ctx.clearRect(0,0,350,350);
+
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 2;
+        ctx.font = "bold 16px Helvetica, Arial";
+
+        for(var i = 0; i < options.length; i++) {
+          var angle = startAngle + i * arc;
+          ctx.fillStyle = ["#e74c3c","#f1c40f","#2ecc71","#3498db"][i];
+          ctx.beginPath();
+          ctx.arc(175, 175, outsideRadius, angle, angle + arc, false);
+          ctx.arc(175, 175, insideRadius, angle + arc, angle, true);
+          ctx.stroke();
+          ctx.fill();
+
+          ctx.save();
+          ctx.fillStyle = "white";
+          ctx.translate(175 + Math.cos(angle + arc / 2) * textRadius,
+                        175 + Math.sin(angle + arc / 2) * textRadius);
+          ctx.rotate(angle + arc / 2 + Math.PI/2);
+          ctx.fillText(options[i], -ctx.measureText(options[i]).width/2, 0);
+          ctx.restore();
+        }
+      }
     }
-  }
-}
 
-function rotateWheel(){
-  startAngle += spinAngle;
-  drawRouletteWheel();
-  requestAnimationFrame(rotateWheel);
-}
+    function rotateWheel(){
+      // add pulse wobble
+      spinAngle += (Math.random() - 0.5) * pulse;
+      startAngle += spinAngle;
+      drawRouletteWheel();
+      requestAnimationFrame(rotateWheel);
+    }
 
-drawRouletteWheel();
-rotateWheel();
-</script>
-"""
-st.components.v1.html(wheel_html, height=420)
+    drawRouletteWheel();
+    rotateWheel();
+    </script>
+    """
+    st.components.v1.html(wheel_html, height=370)
+
+# RIGHT SIDE = Leaderboard
+with right:
+    st.markdown("<h2 style='text-align:center;'>🏆 Live Leaderboard</h2>", unsafe_allow_html=True)
+
+    for i, row in data.iterrows():
+        rank = i + 1
+        name = row["Agent"]
+        deals = row["Deals"]
+        slack_url = row["Slack URL"] if "Slack URL" in row and pd.notna(row["Slack URL"]) else ""
+
+        if rank == 1:
+            medal = "🥇"
+        elif rank == 2:
+            medal = "🥈"
+        elif rank == 3:
+            medal = "🥉"
+        else:
+            medal = f"{rank}."
+
+        cols = st.columns([1,5])
+        with cols[0]:
+            if slack_url:
+                st.image(slack_url, width=60)
+        with cols[1]:
+            st.markdown(f"### {medal} {name} — **{deals} deals**")
+            st.progress(deals / data['Deals'].max())
+
+        # 👇 spacing between rows
+        st.markdown("<div style='margin-bottom:25px;'></div>", unsafe_allow_html=True)
